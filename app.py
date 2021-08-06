@@ -5,6 +5,7 @@ from flask_cors import CORS
 from datetime import timedelta
 from flask import Flask, request, jsonify
 from flask_jwt import JWT, jwt_required, current_identity
+from flask_mail import Mail, Message
 
 
 class User(object):
@@ -78,13 +79,17 @@ username_table = {u.username: u for u in users}
 userid_table = {u.id: u for u in users}
 
 app = Flask(__name__)
-
 app.debug = True
-
 app.config['SECRET_KEY'] = 'super-secret'
 app.config['JWT_EXPIRATION_DELTA'] = timedelta(seconds=86400)
-
 CORS(app)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'ndj6851@gmail.com'
+app.config['MAIL_PASSWORD'] = 'dejager001!'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+mail = Mail(app)
 
 jwt = JWT(app, authenticate, identity)
 
@@ -110,13 +115,17 @@ def user_registration():
         with sqlite3.connect("flask_db.db") as conn:
             cursor = conn.cursor()
             cursor.execute(f"INSERT INTO user( first_name, last_name, username, email_address, address, password )"
-                           f"VALUES( '{first_name}', '{last_name}', '{username}', '{email_address}', '{address}', '{password}' )")
+                           f"VALUES( '{first_name}', '{last_name}', '{username}', '{email_address}', '{address}', "
+                           f"'{password}' )")
             conn.commit()
 
             response["message"] = "success"
             response["status_code"] = 201
-
-        return response
+            if response['status_code'] == 201:
+                msg = Message('Email', sender='ndj6851@gmail.com', recipients=[email_address])
+                msg.body = "You are successfully Login in"
+                mail.send(msg)
+            return "Email Sent"
 
 
 @app.route("/user-login/", methods=["POST"])
@@ -181,7 +190,6 @@ def show_products():
 
     response['status_code'] = 200
     response['data'] = products
-    # render_template('index.html')
 
     return response
 
